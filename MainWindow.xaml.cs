@@ -59,17 +59,35 @@ namespace PastelSdkClient32
                 // 1) SetDataPath is the required first call for the SDK
                 //    It points the SDK at the company data folder.  (SDK docs)
 
-                string rc = _sdk.SetDataPath(TxtCompany.Text.Trim());
+                string dataPath = System.IO.Path.Combine(TxtCompany.Text.Trim(), "2026");
+                string rc = _sdk.SetDataPath(dataPath);
+
+                if (rc != "0")
+                {
+                    throw new ApplicationException(
+                        $"SetDataPath failed.\nPath: {dataPath}\nSDK returned: {rc}"
+                    );
+                }
+
+                //string rc = _sdk.SetDataPath(TxtCompany.Text.Trim());
                 
-                ExpectOk(rc, "SetDataPath"); // many SDK functions return "0" on success
+                //ExpectOk(rc, "SetDataPath"); // many SDK functions return "0" on success
 
                 // 2) Optional: SetLicense if you have Serial/Auth (unlocks full SDK)
                 //    If blanks, we skip; SDK will run in demo mode if unlicensed.
                 //    Format: SetLicense(serial, pAuthcode) per docs.
                 if (!string.IsNullOrWhiteSpace(TxtUser.Text) && !string.IsNullOrWhiteSpace(TxtPass.Password))
                 {
-                    rc = _sdk.SetLicense(TxtUser.Text.Trim(), TxtPass.Password);
-                    ExpectOk(rc, "SetLicense");
+
+                    string licensee = TxtUser.Text.Trim();
+                    string authCode = TxtPass.Password;
+
+                    // SetLicense returns VOID, uses ref params
+                    _sdk.SetLicense(ref licensee, ref authCode);
+
+
+                    // rc = _sdk.SetLicense(TxtUser.Text.Trim(), TxtPass.Password);
+                    //ExpectOk(rc, "SetLicense");
                 }
 
                 _connected = true;

@@ -24,7 +24,7 @@
             <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
                 <TextBlock Text="Company Path:" VerticalAlignment="Center" Width="110"/>
                 <TextBox x:Name="TxtCompany" Width="600" Margin="6,0,20,0"
-                         Text="Q:\2026"/>
+                         Text="Q:\"/>
                 <Button x:Name="BtnConnect" Content="1) Connect" Width="140" Margin="0,0,8,0" Click="BtnConnect_Click"/>
                 <Button x:Name="BtnDisconnect" Content="Disconnect" Width="120" Click="BtnDisconnect_Click" IsEnabled="False"/>
             </StackPanel>

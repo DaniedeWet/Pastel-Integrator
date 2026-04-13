@@ -29,3 +29,6 @@ C:\Users\Danie\source\repos\Pastel Integrator\obj\Debug\PastelIntegrator.csproj.
 C:\Users\Danie\source\repos\Pastel Integrator\obj\Debug\PastelIntegrator.csproj.CoreCompileInputs.cache
 C:\Users\Danie\source\repos\Pastel Integrator\obj\Debug\PastelIntegrator.exe
 C:\Users\Danie\source\repos\Pastel Integrator\obj\Debug\PastelIntegrator.pdb
+C:\Users\Danie\source\repos\Pastel Integrator\bin\Debug\PastelIntegrator.exe.config
+C:\Users\Danie\source\repos\Pastel Integrator\bin\Debug\PastelIntegrator.exe
+C:\Users\Danie\source\repos\Pastel Integrator\bin\Debug\PastelIntegrator.pdb
