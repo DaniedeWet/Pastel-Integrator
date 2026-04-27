@@ -5,11 +5,12 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows;
-using System.Windows.Input;
 using Microsoft.Win32;
+using System.Management;   // add reference to System.Management
 
 // Adjust if your interop namespace differs (from Object Browser)
 using PasSDK;
+using System.Windows.Forms;
 
 namespace PastelSdkClient32
 {
@@ -43,6 +44,119 @@ namespace PastelSdkClient32
             GridCustomers.MouseDoubleClick += (_, __) => ShowPickedCustomer();
 
             StatusText.Text = "Status: Idle";
+        }
+
+        // ---------------------------
+        // Path Picker + Auto‑Detection
+        // ---------------------------
+        private void BtnBrowse_Click(object sender, RoutedEventArgs e)
+        {
+            using (var dlg = new FolderBrowserDialog())
+            {
+                dlg.Description = "Select Pastel Company or DATA folder";
+                dlg.ShowNewFolderButton = false;
+
+                if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    string selected = dlg.SelectedPath;
+
+                    // Expand mapped drive to UNC if needed
+                    string resolved = ResolveToUNC(selected);
+
+                    // Auto-detect DATA folder
+                    string dataPath = DetectDataFolder(resolved);
+
+                    TxtCompany.Text = dataPath;
+                }
+            }
+        }
+        private string DetectDataFolder(string path)
+        {
+            // If already DATA
+            if (Directory.Exists(path) && HasPastelFiles(path))
+                return path;
+
+            // Try subfolders
+            foreach (string sub in Directory.GetDirectories(path))
+            {
+                if (HasPastelFiles(sub))
+                    return sub;
+            }
+
+            System.Windows.MessageBox.Show(
+                "No valid Pastel DATA folder found.\n" +
+                "Folder must contain ACCMASD, ACCPRMGL, etc.",
+                "Pastel SDK",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+
+            return path;
+        }
+
+        private bool HasPastelFiles(string path)
+        {
+            return File.Exists(Path.Combine(path, "ACCMASD")) &&
+                   File.Exists(Path.Combine(path, "ACCPRMGL")) &&
+                   File.Exists(Path.Combine(path, "ACCTRN"));
+        }
+
+        private string ResolveToUNC(string path)
+        {
+            if (path.StartsWith(@"\\"))
+                return path;
+
+            string root = Path.GetPathRoot(path);
+            if (string.IsNullOrWhiteSpace(root))
+                return path;
+
+            string driveLetter = root.TrimEnd('\\');
+
+            using (var searcher = new ManagementObjectSearcher(
+                $"SELECT ProviderName FROM Win32_LogicalDisk WHERE DeviceID='{driveLetter}'"))
+            {
+                foreach (ManagementObject mo in searcher.Get().Cast<ManagementObject>())
+                {
+                    string unc = mo["ProviderName"]?.ToString();
+                    if (!string.IsNullOrEmpty(unc))
+                    {
+                        return Path.Combine(unc, path.Substring(root.Length));
+                    }
+                }
+            }
+
+            return path; // fallback
+        }
+
+
+        // ----------------------------------
+        // QUICK SDK ENVIRONMENT DIAGNOSTIC
+        // ----------------------------------
+        private void BtnDiagnostics_Click(object sender, RoutedEventArgs e)
+        {
+            var sb = new StringBuilder();
+
+            sb.AppendLine("=== Pastel SDK Environment Diagnostic ===");
+            sb.AppendLine($"Process Bitness : {(Environment.Is64BitProcess ? "64-bit ❌" : "32-bit ✅")}");
+            sb.AppendLine($".NET Version   : {Environment.Version}");
+            sb.AppendLine($"User           : {Environment.UserName}");
+            sb.AppendLine();
+
+            string path = TxtCompany.Text.Trim();
+            sb.AppendLine($"Input Path     : {path}");
+
+            string resolved = ResolveToUNC(path);
+            sb.AppendLine($"UNC Path       : {resolved}");
+            sb.AppendLine($"Exists         : {Directory.Exists(resolved)}");
+
+            if (Directory.Exists(resolved))
+            {
+                sb.AppendLine($"ACCMASD        : {File.Exists(Path.Combine(resolved, "ACCMASD"))}");
+                sb.AppendLine($"ACCPRMGL       : {File.Exists(Path.Combine(resolved, "ACCPRMGL"))}");
+                sb.AppendLine($"ACCTRN        : {File.Exists(Path.Combine(resolved, "ACCTRN"))}");
+            }
+
+            System.Windows.MessageBox.Show(sb.ToString(), "SDK Diagnostics",
+                MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         // ---------------------------
@@ -101,7 +215,7 @@ namespace PastelSdkClient32
             catch (Exception ex)
             {
                 StatusText.Text = "Status: Connect failed";
-                MessageBox.Show(ex.Message, "Pastel SDK", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show(ex.Message, "Pastel SDK", MessageBoxButton.OK, MessageBoxImage.Error);
                 SafeCleanup();
             }
         }
@@ -119,7 +233,7 @@ namespace PastelSdkClient32
         {
             if (!_connected)
             {
-                MessageBox.Show("Connect first.", "Pastel SDK", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show("Connect first.", "Pastel SDK", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -164,7 +278,7 @@ namespace PastelSdkClient32
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Fetch error: {ex.Message}", "Pastel SDK", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show($"Fetch error: {ex.Message}", "Pastel SDK", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -175,7 +289,7 @@ namespace PastelSdkClient32
         {
             if (_rows.Count == 0) return;
 
-            var sfd = new SaveFileDialog
+            var sfd = new System.Windows.Forms.SaveFileDialog
             {
                 Title = "Export customers (pipe-delimited)",
                 Filter = "Text Files (*.txt)|*.txt|CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
@@ -183,7 +297,7 @@ namespace PastelSdkClient32
                 OverwritePrompt = true
             };
 
-            if (sfd.ShowDialog(this) == true)
+            if (sfd.ShowDialog((IWin32Window)this) == System.Windows.Forms.DialogResult.OK)
             {
                 var sb = new StringBuilder();
                 sb.AppendLine("Account|Description|Telephone|Contact|PipeDelimited");
@@ -208,7 +322,7 @@ namespace PastelSdkClient32
                     string rec = _sdk.GetRecord(FileCustomer, KeyCustomerByNumber, key);
                     if (!IsRecordRow(rec))
                     {
-                        MessageBox.Show("Customer not found (record read failed).", "Pastel SDK",
+                        System.Windows.MessageBox.Show("Customer not found (record read failed).", "Pastel SDK",
                                         MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
                     }
@@ -226,7 +340,7 @@ namespace PastelSdkClient32
                         cust.Pipe = BuildPipeDisplay(cust);
                     }
 
-                    MessageBox.Show(
+                    System.Windows.MessageBox.Show(
                         $"Account : {cust.Account}\n" +
                         $"Name    : {cust.Description}\n" +
                         $"Phone   : {cust.Telephone}\n" +
@@ -237,7 +351,7 @@ namespace PastelSdkClient32
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Lookup error for [{row.Account}]: {ex.Message}", "Pastel SDK",
+                    System.Windows.MessageBox.Show($"Lookup error for [{row.Account}]: {ex.Message}", "Pastel SDK",
                                     MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
@@ -347,4 +461,5 @@ namespace PastelSdkClient32
 
         private void Notify(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
+
 }
