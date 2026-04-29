@@ -8,8 +8,22 @@
     <PlatformTarget>x86</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
     <StartupObject>PastelIntegrator.App</StartupObject>
+	<BaseOutputPath>bin\</BaseOutputPath>  
     <ProjectGuid>{83B2FA6A-3110-42BF-A529-80E67947FC71}</ProjectGuid>
   </PropertyGroup>
+
+  <!-- Debug x86 -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+		<BaseOutputPath>bin\</BaseOutputPath>
+		<OutputPath>bin\x86\Debug\</OutputPath>
+  </PropertyGroup>
+
+  <!-- Release x86 -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
+		<BaseOutputPath>bin\</BaseOutputPath>
+		<OutputPath>bin\x86\Release\</OutputPath>
+  </PropertyGroup>	
+	
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -75,15 +89,4 @@
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- Debug x86 -->
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
-		<BaseOutputPath>bin\</BaseOutputPath>
-		<OutputPath>bin\x86\Debug\</OutputPath>
-  </PropertyGroup>
-
-  <!-- Release x86 -->
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
-		<BaseOutputPath>bin\</BaseOutputPath>
-		<OutputPath>bin\x86\Release\</OutputPath>
-  </PropertyGroup>
 </Project>
