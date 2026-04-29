@@ -75,4 +75,15 @@
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- Debug x86 -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+		<BaseOutputPath>bin\</BaseOutputPath>
+		<OutputPath>bin\x86\Debug\</OutputPath>
+  </PropertyGroup>
+
+  <!-- Release x86 -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
+		<BaseOutputPath>bin\</BaseOutputPath>
+		<OutputPath>bin\x86\Release\</OutputPath>
+  </PropertyGroup>
 </Project>
