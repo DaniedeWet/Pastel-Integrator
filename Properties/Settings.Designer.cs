@@ -23,6 +23,6 @@ namespace PastelIntegrator.Properties
             //{
                // return defaultInstance;
             // }
+        }
     }
-}
 //}

@@ -9,6 +9,5 @@
 //------------------------------------------------------------------------------
 
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute(".gitattributes")]
-[assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("obj/x86/debug/interop.passdk.dll")]
 
 

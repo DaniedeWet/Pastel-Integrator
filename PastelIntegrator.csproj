@@ -7,6 +7,7 @@
     <UseWPF>true</UseWPF>
     <PlatformTarget>x86</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
+    <StartupObject>PastelIntegrator.App</StartupObject>
     <ProjectGuid>{83B2FA6A-3110-42BF-A529-80E67947FC71}</ProjectGuid>
   </PropertyGroup>
   <ItemGroup>
@@ -58,7 +59,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include=".gitattributes" />
-    <Content Include="obj\x86\Debug\Interop.PasSDK.dll" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx" />
@@ -73,9 +73,6 @@
       <SubType>Designer</SubType>
     </Page>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="bin\x86\Debug\" />
-    <Folder Include="obj\x86\Debug\TempPE\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
