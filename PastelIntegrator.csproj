@@ -7,23 +7,19 @@
     <UseWPF>true</UseWPF>
     <PlatformTarget>x86</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
-    <StartupObject>PastelIntegrator.App</StartupObject>
-	<BaseOutputPath>bin\</BaseOutputPath>  
+    <BaseOutputPath>bin\</BaseOutputPath>
     <ProjectGuid>{83B2FA6A-3110-42BF-A529-80E67947FC71}</ProjectGuid>
   </PropertyGroup>
-
   <!-- Debug x86 -->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
-		<BaseOutputPath>bin\</BaseOutputPath>
-		<OutputPath>bin\x86\Debug\</OutputPath>
+    <BaseOutputPath>bin\</BaseOutputPath>
+    <OutputPath>bin\x86\Debug\</OutputPath>
   </PropertyGroup>
-
   <!-- Release x86 -->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
-		<BaseOutputPath>bin\</BaseOutputPath>
-		<OutputPath>bin\x86\Release\</OutputPath>
-  </PropertyGroup>	
-	
+    <BaseOutputPath>bin\</BaseOutputPath>
+    <OutputPath>bin\x86\Release\</OutputPath>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -78,10 +74,9 @@
     <EmbeddedResource Include="Properties\Resources.resx" />
   </ItemGroup>
   <ItemGroup>
-    <Page Include="App.xaml">
-      <Generator>MSBuild:Compile</Generator>
+    <ApplicationDefinition Include="App.xaml">
       <SubType>Designer</SubType>
-    </Page>
+    </ApplicationDefinition>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
