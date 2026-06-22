@@ -1,0 +1,1 @@
+c:\Users\Danie\source\repos\Pastel Integrator\obj\Debug\PastelIntegrator.csproj.AssemblyReference.cache

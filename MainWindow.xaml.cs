@@ -95,9 +95,10 @@ namespace PastelSdkClient32
 
         private bool HasPastelFiles(string path)
         {
-            return File.Exists(Path.Combine(path, "ACCMASD")) &&
-                   File.Exists(Path.Combine(path, "ACCPRMGL")) &&
-                   File.Exists(Path.Combine(path, "ACCTRN"));
+            // System.Windows.MessageBox.Show($"Checking for Pastel files in: {path}", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
+            return File.Exists(Path.Combine(path, "ACCMASD.DAT")) &&
+                   File.Exists(Path.Combine(path, "ACCPRMGL.DAT")) &&
+                   File.Exists(Path.Combine(path, "ACCTRN.DAT"));
         }
 
         private string ResolveToUNC(string path)
@@ -173,18 +174,21 @@ namespace PastelSdkClient32
                 // 1) SetDataPath is the required first call for the SDK
                 //    It points the SDK at the company data folder.  (SDK docs)
 
-                string dataPath = System.IO.Path.Combine(TxtCompany.Text.Trim(), "2026");
+                string dataPath = System.IO.Path.Combine(TxtCompany.Text.Trim(), "");
                 string rc = _sdk.SetDataPath(dataPath);
 
-                if (rc != "0")
+                if (!string.IsNullOrEmpty(rc))
                 {
                     throw new ApplicationException(
                         $"SetDataPath failed.\nPath: {dataPath}\nSDK returned: {rc}"
                     );
                 }
 
+                // Success
+                StatusText.Text = "Status: Connected (Data path accepted)";
+
                 //string rc = _sdk.SetDataPath(TxtCompany.Text.Trim());
-                
+
                 //ExpectOk(rc, "SetDataPath"); // many SDK functions return "0" on success
 
                 // 2) Optional: SetLicense if you have Serial/Auth (unlocks full SDK)
