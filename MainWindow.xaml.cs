@@ -7,6 +7,7 @@ using System.Text;
 using System.Windows;
 using Microsoft.Win32;
 using System.Management;   // add reference to System.Management
+using System.Data.Odbc;
 
 // Adjust if your interop namespace differs (from Object Browser)
 using PasSDK;
@@ -235,54 +236,57 @@ namespace PastelSdkClient32
         // ---------------------------
         private void BtnFetch_Click(object sender, RoutedEventArgs e)
         {
-            if (!_connected)
-            {
-                System.Windows.MessageBox.Show("Connect first.", "Pastel SDK", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
             try
             {
-                _rows.Clear();
+                StatusText.Text = "Status: Loading customers via ODBC...";
 
-                // Tip from SDK docs: to read the whole file, use GetNearest with an ASCII-zero key;
-                // then call GetNext with the same key number to iterate.  (GetNearest/GetNext)
-                // We'll build a starting key for Key 0 (Number, length 6) filled with ASCII zeros.
-                string startKey = AsciiZeros(CustomerNumberLen);
+                var dt = new System.Data.DataTable();
 
-                string row = _sdk.GetNearest(FileCustomer, KeyCustomerByNumber, startKey);
+                // ✅ Use your DSN (32-bit)  "DSN=Pastel2027_Local;"
+                string connStr = "DSN=Pastel2027_Local;";
 
-                // Iterate until EOF (error "9") or no more pipe rows
-                int safety = 0;
-                while (IsRecordRow(row))
+                using (var conn = new OdbcConnection(connStr))
                 {
-                    var cust = ParseCustomerMaster(row);
+                    conn.Open();
 
-                    // Try to fetch default delivery/contact for this account from ACCDELIV
-                    string delivKey = RightPad(cust.Account, CustomerNumberLen) + new string(' ', DeliveryCodeLen); // Number + "   "
-                    string deliv = _sdk.GetRecord(FileDelivery, KeyDeliveryByNumberCode, delivKey);
-                    if (IsRecordRow(deliv))
+                    // Temporary: fetch all the table (X$File) to see what tables are available. Adjust the query as needed.
+                    // string sql = "SELECT * FROM X$File";
+
+                    // ✅ Quick fallback query (if needed); 👉 This will show all columns
+                    //   Then we map correctly
+                    string sql = "SELECT * FROM CustomerMaster";
+
+                    // ✅ Start simple — adjust names if needed
+                    //string sql = @"
+                    //SELECT 
+                    //    DCUS_CODE AS Account,
+                    //    DCUS_NAME AS Description,
+                    //    DCUS_TEL  AS Telephone,
+                    //    DCUS_CNT  AS Contact
+                    //FROM CustomerMaster
+                    //ORDER BY DCUS_CODE";
+
+                    using (var cmd = new OdbcCommand(sql, conn))
+                    using (var da = new OdbcDataAdapter(cmd))
                     {
-                        var (contact, phone) = ParseDeliveryContact(deliv);
-                        cust.Contact = contact;
-                        cust.Telephone = phone;
-                        cust.Pipe = BuildPipeDisplay(cust); // include phone/contact in the display pipe
+                        da.Fill(dt);
                     }
-
-                    _rows.Add(cust);
-
-                    // next record
-                    row = _sdk.GetNext(FileCustomer, KeyCustomerByNumber);
-
-                    if (++safety > 1_000_000) break; // absolute safety
                 }
 
-                BtnExport.IsEnabled = _rows.Count > 0;
-                StatusText.Text = $"Status: Retrieved {_rows.Count} customers";
+                // ✅ Bind to grid
+                GridCustomers.ItemsSource = dt.DefaultView;
+
+                StatusText.Text = $"Status: Loaded {dt.Rows.Count} customers (ODBC)";
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"Fetch error: {ex.Message}", "Pastel SDK", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show(
+                    "ODBC Error:\n" + ex.Message,
+                    "Fetch Customers",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                StatusText.Text = "Status: Error loading customers";
             }
         }
 

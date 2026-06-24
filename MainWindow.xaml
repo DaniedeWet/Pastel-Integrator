@@ -42,7 +42,7 @@
             </StackPanel>
 
             <!-- Data grid -->
-            <DataGrid x:Name="GridCustomers" Grid.Row="2" AutoGenerateColumns="False" CanUserAddRows="False"
+            <DataGrid x:Name="GridCustomers" Grid.Row="2" AutoGenerateColumns="True" CanUserAddRows="False"
                       IsReadOnly="True">
                 <DataGrid.Columns>
                     <DataGridTextColumn Binding="{Binding Account}" Header="Account" Width="150"/>
