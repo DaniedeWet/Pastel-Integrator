@@ -1,7 +1,7 @@
-﻿<Window x:Class="PastelSdkClient32.MainWindow"
+﻿<Window x:Class="PastelIntegrator.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Pastel Partner SDK (32-bit) - WPF Test" Height="620" Width="1000"
+        Title="PastelIntegrator" Height="620" Width="1000"
         WindowStartupLocation="CenterScreen">
     <DockPanel>
         <StatusBar DockPanel.Dock="Bottom">
@@ -22,13 +22,11 @@
 
             <!-- Connection row -->
             <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
-                <TextBlock Text="Company Path:" VerticalAlignment="Center" Width="110"/>
-                <Button Content="Browse..." Width="90" Margin="8,0,0,0" Click="BtnBrowse_Click"/>
-                <TextBox x:Name="TxtCompany" Width="600" Margin="6,0,20,0"
-                         Text="Q:\"/>
+                <TextBlock Text="Data Source:" Width="110"/>
+                <ComboBox x:Name="CmbDSN" Width="300"/>
+                <Button Content="Refresh" Width="80" Click="BtnRefreshDSN_Click"/>
                 <Button x:Name="BtnConnect" Content="1) Connect" Width="140" Margin="0,0,8,0" Click="BtnConnect_Click"/>
                 <Button x:Name="BtnDisconnect" Content="Disconnect" Width="120" Click="BtnDisconnect_Click" IsEnabled="False"/>
-                <Button Content="SDK Diagnostics" Width="140" Margin="8,0,0,0" Click="BtnDiagnostics_Click"/>
             </StackPanel>
 
             <!-- Credentials row -->
@@ -37,7 +35,7 @@
                 <TextBox x:Name="TxtUser" Width="160" Margin="6,0,20,0" Text="D. DE WET"/>
                 <TextBlock Text="Password:" VerticalAlignment="Center" Width="110"/>
                 <PasswordBox x:Name="TxtPass" Width="160" Margin="6,0,20,0"/>
-                <Button x:Name="BtnFetch" Content="2) Fetch Customers" Width="180" Click="BtnFetch_Click" IsEnabled="False"/>
+                <Button x:Name="BtnFetch" Content="2) Fetch Customers" Width="150" Click="BtnFetch_Click" IsEnabled="False"/>
                 <Button x:Name="BtnExport" Content="Export CSV" Width="120" Margin="8,0,0,0" Click="BtnExport_Click" IsEnabled="False"/>
             </StackPanel>
 

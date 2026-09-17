@@ -1,38 +1,23 @@
-﻿using System;
-using System.Collections.ObjectModel;
+﻿using Microsoft.Win32;
+// Adjust if your interop namespace differs (from Object Browser)
+using System;
 using System.ComponentModel;
+using System.Data;
+using System.Data.Odbc;
+using System.Data.OleDb;
 using System.IO;
 using System.Linq;
+using System.Management;   // add reference to System.Management
 using System.Text;
 using System.Windows;
-using Microsoft.Win32;
-using System.Management;   // add reference to System.Management
-using System.Data.Odbc;
-
-// Adjust if your interop namespace differs (from Object Browser)
-using PasSDK;
 using System.Windows.Forms;
 
-namespace PastelSdkClient32
+namespace PastelIntegrator
 {
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
-        // COM coclass (early-bound)
-        private PastelPartnerSDK _sdk;
-
+        private OdbcConnection _conn;
         private bool _connected;
-        private readonly ObservableCollection<CustomerRow> _rows = new ObservableCollection<CustomerRow>();
-
-        // Constants from the SDK file layouts (ACCMASD / ACCDELIV)
-        // accmasd = customer master (Key 0 = Number, len 6)
-        // accdeliv = delivery (Key 0 = Number + Code, Code len 3), Code "   " (3 spaces) = default
-        private const string FileCustomer = "accmasd";
-        private const int KeyCustomerByNumber = 0;
-        private const int CustomerNumberLen = 6;
-
-        private const string FileDelivery = "accdeliv";
-        private const int KeyDeliveryByNumberCode = 0;
-        private const int DeliveryCodeLen = 3;
 
         public string ProcessBitness => $"Process: {(Environment.Is64BitProcess ? "64-bit" : "32-bit")}";
         public event PropertyChangedEventHandler PropertyChanged;
@@ -40,125 +25,37 @@ namespace PastelSdkClient32
         public MainWindow()
         {
             InitializeComponent();
-            GridCustomers.ItemsSource = _rows;
-            DataContext = this;
-            GridCustomers.MouseDoubleClick += (_, __) => ShowPickedCustomer();
+
+            LoadSystemDSNs();
 
             StatusText.Text = "Status: Idle";
         }
 
         // ---------------------------
-        // Path Picker + Auto‑Detection
+        // DSN Loader
         // ---------------------------
-        private void BtnBrowse_Click(object sender, RoutedEventArgs e)
+        private void LoadSystemDSNs()
         {
-            using (var dlg = new FolderBrowserDialog())
-            {
-                dlg.Description = "Select Pastel Company or DATA folder";
-                dlg.ShowNewFolderButton = false;
+            CmbDSN.Items.Clear();
 
-                if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            var key = Microsoft.Win32.Registry.LocalMachine
+                .OpenSubKey(@"SOFTWARE\WOW6432Node\ODBC\ODBC.INI\ODBC Data Sources");
+
+            if (key != null)
+            {
+                foreach (string name in key.GetValueNames())
                 {
-                    string selected = dlg.SelectedPath;
-
-                    // Expand mapped drive to UNC if needed
-                    string resolved = ResolveToUNC(selected);
-
-                    // Auto-detect DATA folder
-                    string dataPath = DetectDataFolder(resolved);
-
-                    TxtCompany.Text = dataPath;
-                }
-            }
-        }
-        private string DetectDataFolder(string path)
-        {
-            // If already DATA
-            if (Directory.Exists(path) && HasPastelFiles(path))
-                return path;
-
-            // Try subfolders
-            foreach (string sub in Directory.GetDirectories(path))
-            {
-                if (HasPastelFiles(sub))
-                    return sub;
-            }
-
-            System.Windows.MessageBox.Show(
-                "No valid Pastel DATA folder found.\n" +
-                "Folder must contain ACCMASD, ACCPRMGL, etc.",
-                "Pastel SDK",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
-
-            return path;
-        }
-
-        private bool HasPastelFiles(string path)
-        {
-            // System.Windows.MessageBox.Show($"Checking for Pastel files in: {path}", "Debug", MessageBoxButton.OK, MessageBoxImage.Information);
-            return File.Exists(Path.Combine(path, "ACCMASD.DAT")) &&
-                   File.Exists(Path.Combine(path, "ACCPRMGL.DAT")) &&
-                   File.Exists(Path.Combine(path, "ACCTRN.DAT"));
-        }
-
-        private string ResolveToUNC(string path)
-        {
-            if (path.StartsWith(@"\\"))
-                return path;
-
-            string root = Path.GetPathRoot(path);
-            if (string.IsNullOrWhiteSpace(root))
-                return path;
-
-            string driveLetter = root.TrimEnd('\\');
-
-            using (var searcher = new ManagementObjectSearcher(
-                $"SELECT ProviderName FROM Win32_LogicalDisk WHERE DeviceID='{driveLetter}'"))
-            {
-                foreach (ManagementObject mo in searcher.Get().Cast<ManagementObject>())
-                {
-                    string unc = mo["ProviderName"]?.ToString();
-                    if (!string.IsNullOrEmpty(unc))
-                    {
-                        return Path.Combine(unc, path.Substring(root.Length));
-                    }
+                    CmbDSN.Items.Add(name);
                 }
             }
 
-            return path; // fallback
+            if (CmbDSN.Items.Count > 0)
+                CmbDSN.SelectedIndex = 0;
         }
 
-
-        // ----------------------------------
-        // QUICK SDK ENVIRONMENT DIAGNOSTIC
-        // ----------------------------------
-        private void BtnDiagnostics_Click(object sender, RoutedEventArgs e)
+        private void BtnRefreshDSN_Click(object sender, RoutedEventArgs e)
         {
-            var sb = new StringBuilder();
-
-            sb.AppendLine("=== Pastel SDK Environment Diagnostic ===");
-            sb.AppendLine($"Process Bitness : {(Environment.Is64BitProcess ? "64-bit ❌" : "32-bit ✅")}");
-            sb.AppendLine($".NET Version   : {Environment.Version}");
-            sb.AppendLine($"User           : {Environment.UserName}");
-            sb.AppendLine();
-
-            string path = TxtCompany.Text.Trim();
-            sb.AppendLine($"Input Path     : {path}");
-
-            string resolved = ResolveToUNC(path);
-            sb.AppendLine($"UNC Path       : {resolved}");
-            sb.AppendLine($"Exists         : {Directory.Exists(resolved)}");
-
-            if (Directory.Exists(resolved))
-            {
-                sb.AppendLine($"ACCMASD        : {File.Exists(Path.Combine(resolved, "ACCMASD"))}");
-                sb.AppendLine($"ACCPRMGL       : {File.Exists(Path.Combine(resolved, "ACCPRMGL"))}");
-                sb.AppendLine($"ACCTRN        : {File.Exists(Path.Combine(resolved, "ACCTRN"))}");
-            }
-
-            System.Windows.MessageBox.Show(sb.ToString(), "SDK Diagnostics",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            LoadSystemDSNs();
         }
 
         // ---------------------------
@@ -168,125 +65,90 @@ namespace PastelSdkClient32
         {
             try
             {
-                EnsureX86(); // The SDK is 32-bit only
-
-                _sdk = new PastelPartnerSDK();
-
-                // 1) SetDataPath is the required first call for the SDK
-                //    It points the SDK at the company data folder.  (SDK docs)
-
-                string dataPath = System.IO.Path.Combine(TxtCompany.Text.Trim(), "");
-                string rc = _sdk.SetDataPath(dataPath);
-
-                if (!string.IsNullOrEmpty(rc))
+                if (CmbDSN.SelectedItem == null)
                 {
-                    throw new ApplicationException(
-                        $"SetDataPath failed.\nPath: {dataPath}\nSDK returned: {rc}"
-                    );
+                    System.Windows.MessageBox.Show("Select a Data Source.");
+                    return;
                 }
 
-                // Success
-                StatusText.Text = "Status: Connected (Data path accepted)";
+                string dsn = CmbDSN.SelectedItem.ToString();
 
-                //string rc = _sdk.SetDataPath(TxtCompany.Text.Trim());
-
-                //ExpectOk(rc, "SetDataPath"); // many SDK functions return "0" on success
-
-                // 2) Optional: SetLicense if you have Serial/Auth (unlocks full SDK)
-                //    If blanks, we skip; SDK will run in demo mode if unlicensed.
-                //    Format: SetLicense(serial, pAuthcode) per docs.
-                if (!string.IsNullOrWhiteSpace(TxtUser.Text) && !string.IsNullOrWhiteSpace(TxtPass.Password))
-                {
-
-                    string licensee = TxtUser.Text.Trim();
-                    string authCode = TxtPass.Password;
-
-                    // SetLicense returns VOID, uses ref params
-                    _sdk.SetLicense(ref licensee, ref authCode);
-
-
-                    // rc = _sdk.SetLicense(TxtUser.Text.Trim(), TxtPass.Password);
-                    //ExpectOk(rc, "SetLicense");
-                }
+                _conn = new OdbcConnection($"DSN={dsn};");
+                _conn.Open();
 
                 _connected = true;
+
                 BtnConnect.IsEnabled = false;
                 BtnDisconnect.IsEnabled = true;
                 BtnFetch.IsEnabled = true;
-                BtnExport.IsEnabled = false;
 
-                StatusText.Text = "Status: Connected (data path set)";
+                StatusText.Text = $"Status: Connected to {dsn}";
             }
             catch (Exception ex)
             {
-                StatusText.Text = "Status: Connect failed";
-                System.Windows.MessageBox.Show(ex.Message, "Pastel SDK", MessageBoxButton.OK, MessageBoxImage.Error);
-                SafeCleanup();
+                System.Windows.MessageBox.Show(ex.Message,
+                    "ODBC Connection Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 
         private void BtnDisconnect_Click(object sender, RoutedEventArgs e)
         {
-            SafeCleanup();
+            if (_conn != null)
+            {
+                _conn.Close();
+                _conn.Dispose();
+                _conn = null;
+            }
+
+            BtnConnect.IsEnabled = true;
+            BtnDisconnect.IsEnabled = false;
+            BtnFetch.IsEnabled = false;
+
             StatusText.Text = "Status: Disconnected";
         }
 
         // ---------------------------
-        // Fetch all customers (pipe rows via GetNearest/GetNext)
+        // Fetch all customers 
         // ---------------------------
         private void BtnFetch_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                StatusText.Text = "Status: Loading customers via ODBC...";
-
-                var dt = new System.Data.DataTable();
-
-                // ✅ Use your DSN (32-bit)  "DSN=Pastel2027_Local;"
-                string connStr = "DSN=Pastel2027_Local;";
-
-                using (var conn = new OdbcConnection(connStr))
+                if (_conn == null)
                 {
-                    conn.Open();
-
-                    // Temporary: fetch all the table (X$File) to see what tables are available. Adjust the query as needed.
-                    // string sql = "SELECT * FROM X$File";
-
-                    // ✅ Quick fallback query (if needed); 👉 This will show all columns
-                    //   Then we map correctly
-                    string sql = "SELECT * FROM CustomerMaster";
-
-                    // ✅ Start simple — adjust names if needed
-                    //string sql = @"
-                    //SELECT 
-                    //    DCUS_CODE AS Account,
-                    //    DCUS_NAME AS Description,
-                    //    DCUS_TEL  AS Telephone,
-                    //    DCUS_CNT  AS Contact
-                    //FROM CustomerMaster
-                    //ORDER BY DCUS_CODE";
-
-                    using (var cmd = new OdbcCommand(sql, conn))
-                    using (var da = new OdbcDataAdapter(cmd))
-                    {
-                        da.Fill(dt);
-                    }
+                    System.Windows.MessageBox.Show("Please connect first.");
+                    return;
                 }
 
-                // ✅ Bind to grid
+                DataTable dt = new DataTable();
+
+                string sql =
+                @"SELECT
+             CustomerCode,
+             CustomerDesc,
+             BalanceThis13
+          FROM CustomerMaster
+          ORDER BY CustomerCode";
+
+                using (var cmd = new OdbcCommand(sql, _conn))
+                using (var da = new OdbcDataAdapter(cmd))
+                {
+                    da.Fill(dt);
+                }
+
                 GridCustomers.ItemsSource = dt.DefaultView;
 
-                StatusText.Text = $"Status: Loaded {dt.Rows.Count} customers (ODBC)";
+                StatusText.Text =
+                    $"Status: Loaded {dt.Rows.Count:N0} customers";
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show(
-                    "ODBC Error:\n" + ex.Message,
-                    "Fetch Customers",
+                System.Windows.MessageBox.Show(ex.Message,
+                    "Customer Load Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
-
-                StatusText.Text = "Status: Error loading customers";
             }
         }
 
@@ -295,148 +157,15 @@ namespace PastelSdkClient32
         // ---------------------------
         private void BtnExport_Click(object sender, RoutedEventArgs e)
         {
-            if (_rows.Count == 0) return;
-
-            var sfd = new System.Windows.Forms.SaveFileDialog
-            {
-                Title = "Export customers (pipe-delimited)",
-                Filter = "Text Files (*.txt)|*.txt|CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
-                FileName = "Pastel_Customers.txt",
-                OverwritePrompt = true
-            };
-
-            if (sfd.ShowDialog((IWin32Window)this) == System.Windows.Forms.DialogResult.OK)
-            {
-                var sb = new StringBuilder();
-                sb.AppendLine("Account|Description|Telephone|Contact|PipeDelimited");
-                foreach (var r in _rows)
-                    sb.AppendLine($"{r.Account}|{r.Description}|{r.Telephone}|{r.Contact}|{r.Pipe}");
-                File.WriteAllText(sfd.FileName, sb.ToString(), Encoding.UTF8);
-                StatusText.Text = $"Status: Exported {_rows.Count} rows → {sfd.FileName}";
-            }
+            System.Windows.MessageBox.Show(
+                "Export CSV will be implemented later.",
+                "PastelIntegrator",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
-
-        // ---------------------------
-        // Pick behaviour (double-click)
-        // ---------------------------
-        private void ShowPickedCustomer()
-        {
-            if (GridCustomers.SelectedItem is CustomerRow row && !string.IsNullOrWhiteSpace(row.Account))
-            {
-                try
-                {
-                    // Exact read by account code using Key 0 on ACCMASD
-                    string key = RightPad(row.Account, CustomerNumberLen);
-                    string rec = _sdk.GetRecord(FileCustomer, KeyCustomerByNumber, key);
-                    if (!IsRecordRow(rec))
-                    {
-                        System.Windows.MessageBox.Show("Customer not found (record read failed).", "Pastel SDK",
-                                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
-                    }
-
-                    var cust = ParseCustomerMaster(rec);
-
-                    // Re-read delivery (Number + "   ")
-                    string delivKey = RightPad(cust.Account, CustomerNumberLen) + new string(' ', DeliveryCodeLen);
-                    string deliv = _sdk.GetRecord(FileDelivery, KeyDeliveryByNumberCode, delivKey);
-                    if (IsRecordRow(deliv))
-                    {
-                        var (contact, phone) = ParseDeliveryContact(deliv);
-                        cust.Contact = contact;
-                        cust.Telephone = phone;
-                        cust.Pipe = BuildPipeDisplay(cust);
-                    }
-
-                    System.Windows.MessageBox.Show(
-                        $"Account : {cust.Account}\n" +
-                        $"Name    : {cust.Description}\n" +
-                        $"Phone   : {cust.Telephone}\n" +
-                        $"Contact : {cust.Contact}\n\n" +
-                        $"RAW: {cust.Pipe}",
-                        "Picked Customer",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                catch (Exception ex)
-                {
-                    System.Windows.MessageBox.Show($"Lookup error for [{row.Account}]: {ex.Message}", "Pastel SDK",
-                                    MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-        }
-
-        // ---------------------------
-        // Parsing helpers (pipe rows)
-        // ---------------------------
-
-        // ACCMASD: Category(1), Number(2), Description(3), ...
-        // We'll take Number & Description for display.
-        private static CustomerRow ParseCustomerMaster(string pipeRow)
-        {
-            var t = (pipeRow ?? "").Split('|');
-            var account = t.ElementAtOrDefault(1) ?? "";     // Number (6 chars)
-            var desc = t.ElementAtOrDefault(2) ?? "";     // Description
-
-            // We’ll fill phone/contact later from ACCDELIV
-            return new CustomerRow
-            {
-                Account = account.Trim(),
-                Description = desc.Trim(),
-                Telephone = "",
-                Contact = "",
-                Pipe = pipeRow
-            };
-        }
-
-        // ACCDELIV columns include: Number(1), Code(2), Salesman(3), Contact(4), Telephone(5), ...
-        private static (string contact, string phone) ParseDeliveryContact(string pipeRow)
-        {
-            var t = (pipeRow ?? "").Split('|');
-            string contact = (t.ElementAtOrDefault(3) ?? "").Trim();
-            string phone = (t.ElementAtOrDefault(4) ?? "").Trim();
-            return (contact, phone);
-        }
-
-        private static string BuildPipeDisplay(CustomerRow r)
-            => $"{r.Account}|{r.Description}|{r.Telephone}|{r.Contact}";
-
-        // ---------------------------
-        // SDK return handling
-        // ---------------------------
-        private static void ExpectOk(string rc, string method)
-        {
-            // Many non-read calls return "0" on success; else "code|detail" (per docs).
-            // We'll treat a bare "0" as success and anything else as error.
-
-            if (!string.Equals(rc, "", StringComparison.Ordinal))
-                throw new ApplicationException($"{method} failed: {rc}");
-
-           
-        }
-
-        private static bool IsRecordRow(string s)
-        {
-            // For GetRecord/GetNearest/GetNext, data rows are pipe-delimited.
-            // Bare numeric values (e.g. "9") indicate errors like EOF.
-            return !string.IsNullOrWhiteSpace(s) && s.Contains("|");
-        }
-
         // ---------------------------
         // Utilities
         // ---------------------------
-        private static string RightPad(string value, int len)
-        {
-            value = value ?? "";
-            return (value.Length >= len) ? value.Substring(0, len) : value + new string(' ', len - value.Length);
-        }
-
-        private static string AsciiZeros(int len) => new string('\0', len);
-
-        private void EnsureX86()
-        {
-            if (Environment.Is64BitProcess)
-                throw new InvalidOperationException("The app must run as 32-bit (x86) to load the Pastel Partner SDK.");
-        }
 
         private void SafeCleanup()
         {
@@ -446,7 +175,6 @@ namespace PastelSdkClient32
             BtnDisconnect.IsEnabled = false;
             BtnFetch.IsEnabled = false;
             BtnExport.IsEnabled = false;
-            _sdk = null;
         }
 
         protected override void OnClosing(CancelEventArgs e)
@@ -454,18 +182,7 @@ namespace PastelSdkClient32
             SafeCleanup();
             base.OnClosing(e);
         }
-
-        // ---------------------------
-        // Model for the grid
-        // ---------------------------
-        public sealed class CustomerRow
-        {
-            public string Account { get; set; }
-            public string Description { get; set; }
-            public string Telephone { get; set; }
-            public string Contact { get; set; }
-            public string Pipe { get; set; }
-        }
+       
 
         private void Notify(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }

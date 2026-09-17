@@ -15,4 +15,3 @@ C:\Users\Danie\source\repos\Pastel Integrator\obj\x86\Debug\PastelIntegrator.csp
 C:\Users\Danie\source\repos\Pastel Integrator\obj\x86\Debug\PastelIntegrator.csproj.CoreCompileInputs.cache
 C:\Users\Danie\source\repos\Pastel Integrator\obj\x86\Debug\PastelIntegrator.exe
 C:\Users\Danie\source\repos\Pastel Integrator\obj\x86\Debug\PastelIntegrator.pdb
-C:\Users\Danie\source\repos\Pastel Integrator\obj\x86\Debug\PastelIntegrator.exe.config
