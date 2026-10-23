@@ -11,11 +11,14 @@ using System.Management;   // add reference to System.Management
 using System.Text;
 using System.Windows;
 using System.Windows.Forms;
+using PastelIntegrator.Services;
+
 
 namespace PastelIntegrator
 {
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
+        private PastelDataService _dataService;
         private OdbcConnection _conn;
         private bool _connected;
 
@@ -77,6 +80,7 @@ namespace PastelIntegrator
                 _conn.Open();
 
                 _connected = true;
+                _dataService = new PastelDataService(dsn);
 
                 BtnConnect.IsEnabled = false;
                 BtnDisconnect.IsEnabled = true;
@@ -116,27 +120,7 @@ namespace PastelIntegrator
         {
             try
             {
-                if (_conn == null)
-                {
-                    System.Windows.MessageBox.Show("Please connect first.");
-                    return;
-                }
-
-                DataTable dt = new DataTable();
-
-                string sql =
-                @"SELECT
-             CustomerCode,
-             CustomerDesc,
-             BalanceThis13
-          FROM CustomerMaster
-          ORDER BY CustomerCode";
-
-                using (var cmd = new OdbcCommand(sql, _conn))
-                using (var da = new OdbcDataAdapter(cmd))
-                {
-                    da.Fill(dt);
-                }
+                DataTable dt = _dataService.GetCustomers();
 
                 GridCustomers.ItemsSource = dt.DefaultView;
 
@@ -145,7 +129,8 @@ namespace PastelIntegrator
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show(ex.Message,
+                System.Windows.MessageBox.Show(
+                    ex.Message,
                     "Customer Load Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -166,6 +151,8 @@ namespace PastelIntegrator
         // ---------------------------
         // Utilities
         // ---------------------------
+
+        
 
         private void SafeCleanup()
         {
